@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"bytes"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -31,27 +31,46 @@ func handler(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "page was invalid").SetInternal(err)
 	}
-	b, err := readPage(path.Join(readBaseDir, fp), page)
+	rc, closer, err := recursizeReadPage(fp, page)
+	if err != nil {
+		return err
+	}
+	defer closer.Close()
+	defer rc.Close()
+	pr, pw := io.Pipe()
+	defer pr.Close()
+	go func() {
+		defer pw.Close()
+		if err := optimize.ResizeToMax(rc, pw); err != nil {
+			pw.CloseWithError(err)
+		}
+	}()
+	c.Response().Header().Add("Cache-Control", "max-age=86400")
+	return c.Stream(http.StatusOK, "application/octet-stream", pr)
+}
+
+func recursizeReadPage(fp string, page int) (rc io.ReadCloser, closer io.Closer, err error) {
+	rc, closer, err = readPage(path.Join(readBaseDir, fp), page)
 	if err != nil {
 		dirEntries, err := os.ReadDir(path.Join(readBaseDir, fp))
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError).SetInternal(err)
+			return nil, nil, echo.NewHTTPError(http.StatusInternalServerError, "failed to read dir").SetInternal(err)
 		}
-		b, err = readPage(path.Join(readBaseDir, fp, dirEntries[0].Name()), page)
-		if err != nil {
-			b, err = readPage(path.Join(readBaseDir, fp, dirEntries[1].Name()), page)
-			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "failed to read page").SetInternal(err)
+		digSize := 4
+		if digSize > len(dirEntries) {
+			digSize = len(dirEntries)
+		}
+		for i := 0; i < digSize; i++ {
+			rc, closer, err = readPage(path.Join(readBaseDir, fp, dirEntries[i].Name()), page)
+			if err == nil {
+				return rc, closer, nil
 			}
 		}
+		if err != nil {
+			return nil, nil, echo.NewHTTPError(http.StatusBadRequest, "failed to read page").SetInternal(err)
+		}
 	}
-	c.Response().Header().Add("Cache-Control", "max-age=86400")
-	buf := &bytes.Buffer{}
-	if err := optimize.ResizeToMax(bytes.NewReader(b), buf); err != nil {
-		c.Logger().Info(err)
-		return c.Blob(http.StatusOK, http.DetectContentType(b), b)
-	}
-	return c.Stream(http.StatusOK, http.DetectContentType(buf.Bytes()), buf)
+	return
 }
 
 func listHandler(c echo.Context) error {

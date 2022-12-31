@@ -5,7 +5,7 @@ services:
       context: ./docker
       dockerfile: Dockerfile
     ports:
-      - "80"
+      - "16280:80"
     volumes:
       - ${GOPATH}/pkg:/go/pkg:delegated
       - ./:/code:delegated
