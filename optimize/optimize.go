@@ -39,11 +39,9 @@ func elapsed(name string) func() {
 }
 
 func ResizeToMax(r io.Reader, w io.Writer) error {
-	defer elapsed("image decode")()
 	locker <- struct{}{}
-	defer func() {
-		<-locker
-	}()
+	defer func() { <-locker }()
+	defer elapsed("image decode")()
 	i, _, err := image.Decode(r)
 	if err != nil {
 		return err
@@ -54,16 +52,19 @@ func ResizeToMax(r io.Reader, w io.Writer) error {
 	if width < limitSize && height < limitSize {
 		return encoder.Encode(w, i)
 	}
-	var newImgData *image.RGBA
-	if height >= width {
-		f := float64((width * limitSize))
-		w := math.Round(f / float64(height))
-		newImgData = image.NewRGBA(image.Rect(0, 0, int(w), limitSize))
-	} else {
-		f := float64((limitSize * height))
-		h := math.Round(f / float64(width))
-		newImgData = image.NewRGBA(image.Rect(0, 0, limitSize, int(h)))
-	}
+	newW, newH := getLimitSize(width, height, limitSize)
+	newImgData := image.NewRGBA(image.Rect(0, 0, newW, newH))
 	defaultScaler.Scale(newImgData, newImgData.Bounds(), i, i.Bounds(), draw.Over, nil)
 	return encoder.Encode(w, newImgData)
+}
+
+func getLimitSize(width, height, limit int) (newWidth, newHeight int) {
+	limitEdge := height
+	if height >= width {
+		limitEdge = width
+	}
+	f := float64((limitEdge * limit))
+	newW := math.Round(f / float64(height))
+	newH := math.Round(f / float64(width))
+	return int(newW), int(newH)
 }
