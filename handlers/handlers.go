@@ -46,6 +46,7 @@ func handler(c echo.Context) error {
 		}
 	}()
 	c.Response().Header().Add("Cache-Control", "max-age=86400")
+	c.Response().Header().Set("Content-Disposition", "inline")
 	return c.Stream(http.StatusOK, "application/octet-stream", pr)
 }
 

@@ -1,4 +1,7 @@
 
+const mainTagName = 'img'
+const mainTagProp = 'src'
+
 let filepath
 let page
 let prevPage = -1
@@ -20,15 +23,18 @@ function setPage ( p ) {
 	setImgSrc( page )
 }
 
-function setImgTags ( n ) {
-	localStorage.setItem( 'imgtags', n )
-	const el = document.getElementsByClassName( 'contents' )[ 0 ]
-	el.innerHTML = ''
-	for ( let i = 0; i < n; i++ ) {
-		const img = document.createElement( 'img' )
-		img.className = 'img'
-		el.appendChild( img )
+function setImgTags ( num ) {
+	localStorage.setItem( 'imgtags', num )
+	const createEl = ( el, n ) => {
+		el.innerHTML = ''
+		for ( let i = 0; i < n; i++ ) {
+			const child = document.createElement( mainTagName )
+			child.className = 'img'
+			el.appendChild( child )
+		}
 	}
+	createEl( document.getElementsByClassName( 'contents' )[ 0 ], num )
+	createEl( document.getElementsByClassName( 'preload' )[ 0 ], 2 )
 	setPage( page )
 }
 
@@ -54,27 +60,26 @@ function getContentURL ( p ) {
 }
 
 function setImgSrc ( p ) {
-	const els = document.querySelectorAll( '.contents img' )
+	const els = document.querySelectorAll( '.contents .img' )
 	const fetchPromises = []
 	els.forEach( ( el, index ) => {
 		fetchPromises.push( pageSize( el ) )
-		el.src = getContentURL( p + index )
+		el[ mainTagProp ] = getContentURL( p + index )
 		if ( p + index >= maxPage ) {
-			el.src = ''
+			el[ mainTagProp ] = ''
 		}
 		if ( p + index < 0 ) {
-			el.src = ''
+			el[ mainTagProp ] = ''
 		}
 	} )
-	const hideEls = document.querySelectorAll( '.preload img' )
+	const hideEls = document.querySelectorAll( '.preload .img' )
 	hideEls.forEach( ( el, index ) => {
-		console.log( el )
-		el.src = getContentURL( p + index + els.length )
+		el[ mainTagProp ] = getContentURL( p + index + els.length )
 		if ( p + index >= maxPage ) {
-			el.src = ''
+			el[ mainTagProp ] = ''
 		}
 		if ( p + index < 0 ) {
-			el.src = ''
+			el[ mainTagProp ] = ''
 		}
 	} )
 	const hideImgPos = prevPage <= p ? 1 : 0
