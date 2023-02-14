@@ -6,6 +6,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "16280:80"
+    restart: always
     volumes:
       - ${GOPATH}/pkg:/go/pkg:delegated
       - ./:/code:delegated
