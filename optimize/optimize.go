@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"context"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -38,9 +39,14 @@ func elapsed(name string) func() {
 	}
 }
 
-func ResizeToMax(r io.Reader, w io.Writer) error {
+func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
 	locker <- struct{}{}
 	defer func() { <-locker }()
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context done")
+	default:
+	}
 	defer elapsed("image decode")()
 	i, _, err := image.Decode(r)
 	if err != nil {

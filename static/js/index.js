@@ -2,6 +2,7 @@
 function getThumbImg ( record, page ) {
 	const img = document.createElement( 'img' )
 	img.src = `./c/${ record.hashed_name }?page=${ page }`
+	img.loading = 'lazy'
 	return img
 }
 

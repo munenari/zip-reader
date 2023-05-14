@@ -41,7 +41,8 @@ func handler(c echo.Context) error {
 	defer pr.Close()
 	go func() {
 		defer pw.Close()
-		if err := optimize.ResizeToMax(rc, pw); err != nil {
+		if err := optimize.ResizeToMax(c.Request().Context(), rc, pw); err != nil {
+			c.Logger().Error(err)
 			pw.CloseWithError(err)
 		}
 	}()
