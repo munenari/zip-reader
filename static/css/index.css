@@ -1,34 +1,30 @@
-html, body {
-	width: 100%;
-	height: 100%;
-	padding: 0;
-	margin: 0;
+
+a {
+	text-decoration: none;
 }
 
-div.contents {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	max-width: 100%;
-	height: 100%;
-	margin: 0 auto;
+.contents {
+	width: 100%;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, 256px);
+	gap: 1rem 1rem;
+	justify-content: space-between;
+	padding: 2rem;
 }
 
 .contents>a {
-	flex: 1 1 auto;
-	width: 512px;
-	height: 256px;
-	margin: 5px;
-	padding: 0;
-	/* border: 1px black solid; */
+	display: flex;
+	flex-direction: column;
 }
 
-.record img {
+.contents>a>div {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, 128px);
+	justify-content: space-between;
+}
+
+.contents>a>div>img {
 	object-fit: contain;
-	width: 50%;
-	height: calc( 256px - 4rem );
-}
-
-.record p {
-	margin: 0;
+	width: 128px;
+	height: 128px;
 }

@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -121,6 +123,9 @@ func infoHandler(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "path was invalid").SetInternal(err)
 	}
+	dirEntries = slices.DeleteFunc(dirEntries, func(v fs.DirEntry) bool {
+		return strings.HasPrefix(v.Name(), ".")
+	})
 	currentIndex := 0
 	for i, de := range dirEntries {
 		if strings.Index(de.Name(), ".") == 0 {

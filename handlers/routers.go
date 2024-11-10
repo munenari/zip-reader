@@ -13,7 +13,7 @@ func Routes(htmls embed.FS, baseDir string) (*echo.Echo, error) {
 	readBaseDir = baseDir
 
 	e := echo.New()
-	e.Use(middleware.Logger())
+	e.Use(middleware.Logger(), middleware.Recover(), middleware.Gzip())
 	e.HideBanner = true
 	public, err := fs.Sub(htmls, "static")
 	if err != nil {

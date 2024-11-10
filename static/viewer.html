@@ -2,26 +2,57 @@
 <html lang="ja">
 <head>
 	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
 	<title>Viewer</title>
 
+	<link rel="stylesheet" href="https://unpkg.com/modern-css-reset@1.4.0/dist/reset.min.css">
 	<link href="./css/viewer.css" rel="stylesheet">
 
-	<script src="./js/viewer.js" defer></script>
+	<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
+	<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+	<script src="./js/viewer.js" type="text/javascript"></script>
 </head>
 <body>
-	<div class='main'>
+	<div
+		class='main w-full h-full'
+		:class="mouseMoving || 'cursor-none'"
+		x-data="viewPage"
+		@hashchange.window="init"
+		@keydown.window.prevent.left="nextPage"
+		@keydown.window.prevent.right="prevPage"
+		@keyup.window.F="toggleFullscreen"
+		@keyup.window.G="oddPage"
+		@keyup.window.1="setDisplayPage(1)"
+		@keyup.window.2="setDisplayPage(2)"
+		@keyup.window.up="changeHash(fileInfo.prev_hashed_name)"
+		@keyup.window.down="changeHash(fileInfo.next_hashed_name)"
+		@mousemove.window="onMousemove"
+	>
 		<div class='header'>
-			<a href=""><p><-</p></a>
-			<p class="clock">XX:XX</p>
-			<p>
-				<span class='title'>Title</span>&nbsp;<span class='page'>[-/-]</span>
+			<a :href="'./#' + fileInfo.parent_hashed_name">
+				<p>←</p>
+			</a>
+			<p class="flex-1 text-center">
+				<span x-text="title"></span>
+				<span x-text="pageText"></span>
 			</p>
+			<p x-data="clock" x-text="clockText" @click="showPageSlider = !showPageSlider"></p>
 		</div>
-		<div class='contents'></div>
+		<div class="pageslider" x-show="showPageSlider">
+			<input type="range" class="w-full" :min="-parseInt(fileInfo.size / displayPage)" max="0" :value="-page" @input="onInputPage" />
+		</div>
+		<div class='contents flex-1'>
+			<template x-for="(_, i) in Array(parseInt(fileInfo.size / displayPage))">
+				<div class="onepage w-full h-full" :id="'page' + i" x-intersect.full="setPage(i)">
+					<template x-for="(_, j) in Array(displayPage)">
+						<template x-data="{ p: i*displayPage+j }" x-if="p+oddNum >= 0">
+							<img class="flex-1" :src="getContentURL(p+oddNum)" loading="lazy" decoding="async" :style="'order: -' + j" />
+						</template>
+					</template>
+				</div>
+			</template>
+		</div>
 	</div>
-	<div class='preload'></div>
 </body>
 </html>
