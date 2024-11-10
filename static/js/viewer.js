@@ -116,6 +116,13 @@ window.addEventListener('alpine:init', () => {
 		},
 		onInputPage (evt) {
 			this.page = -evt.target.value
+		},
+		getImgLoading (p) {
+			const eagerSize = 1
+			if (Math.abs(p-this.page) <= eagerSize) {
+				return 'eager'
+			}
+			return 'lazy'
 		}
 	}))
 
