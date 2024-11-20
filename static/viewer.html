@@ -19,6 +19,7 @@
 		:class="mouseMoving || 'cursor-none'"
 		x-data="viewPage"
 		@hashchange.window="init"
+		@keydown.window.space="nextPage"
 		@keydown.window.prevent.left="nextPage"
 		@keydown.window.prevent.right="prevPage"
 		@keyup.window.F="toggleFullscreen"

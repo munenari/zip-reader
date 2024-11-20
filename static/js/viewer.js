@@ -86,8 +86,7 @@ window.addEventListener('alpine:init', () => {
 		},
 		toggleFullscreen () {
 			if ( !document.fullscreenElement ) {
-				const view = document.getElementsByClassName( 'main' )[ 0 ]
-				view.requestFullscreen()
+				document.body.requestFullscreen()
 			} else {
 				document.exitFullscreen()
 			}
