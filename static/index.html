@@ -9,6 +9,7 @@
 	<link rel="stylesheet" href="https://unpkg.com/modern-css-reset@1.4.0/dist/reset.min.css">
 	<link href="./css/index.css" rel="stylesheet">
 
+	<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/intersect@3.x.x/dist/cdn.min.js"></script>
 	<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 	<script src="./js/index.js" type="text/javascript"></script>
 </head>
@@ -21,8 +22,8 @@
 		<template x-for="(r, index) in records" :key="r.name">
 			<a :href="hrefPrefix + '#' + r.hashed_name" x-data="{ hrefPrefix: r.is_dir ? './' : './viewer.html' }">
 				<div>
-					<img :src="'./c/' + r.hashed_name + '?page=0'" loading="lazy" decoding="async" />
-					<img :src="'./c/' + r.hashed_name + '?page=1'" loading="lazy" decoding="async" />
+					<img x-data="{ src: `./c/${r.hashed_name}?page=0` }" x-intersect:enter="$el.src = src" x-intersect:leave="$el.src = ''" loading="lazy" decoding="async" />
+					<img x-data="{ src: `./c/${r.hashed_name}?page=1` }" x-intersect:enter="$el.src = src" x-intersect:leave="$el.src = ''" loading="lazy" decoding="async" />
 				</div>
 				<p x-text="r.name"></p>
 			</a>

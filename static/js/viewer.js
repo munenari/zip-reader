@@ -67,6 +67,10 @@ window.addEventListener('alpine:init', () => {
 			console.info(this.$data.fileInfo)
 		},
 		getContentURL ( p ) {
+			const eagerSize = 2
+			if (Math.abs(p/this.displayPage-this.page) > eagerSize) {
+				return ''
+			}
 			return `./c/${ this.filePath }?page=${ p }`
 		},
 		setPage (v) {
@@ -117,7 +121,7 @@ window.addEventListener('alpine:init', () => {
 			this.page = -evt.target.value
 		},
 		getImgLoading (p) {
-			const eagerSize = 1
+			const eagerSize = 2
 			if (Math.abs(p-this.page) <= eagerSize) {
 				return 'eager'
 			}
