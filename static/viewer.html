@@ -43,7 +43,13 @@
 			<p x-data="clock" x-text="clockText" @click="showPageSlider = !showPageSlider"></p>
 		</div>
 		<div class="pageslider" x-show="showPageSlider">
+			<a :href="'#' + fileInfo.prev_hashed_name">
+				<p>↑</p>
+			</a>
 			<input type="range" class="w-full" :min="-parseInt(fileInfo.size / displayPage)" max="0" :value="-page" @input="onInputPage" />
+			<a :href="'#' + fileInfo.next_hashed_name">
+				<p>↓</p>
+			</a>
 		</div>
 		<div class='contents flex-1'>
 			<template x-for="(_, i) in Array(parseInt(fileInfo.size / displayPage))">
