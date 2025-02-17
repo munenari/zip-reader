@@ -14,7 +14,7 @@ window.addEventListener( 'alpine:init', () => {
 	Alpine.data('listPage', () => ({
 		records: fetchDirInfo(),
 		async reload () {
-			this.records = await fetchDirInfo()
+			location.reload()
 		}
 	}))
 
