@@ -53,7 +53,7 @@
 		</div>
 		<div class='contents flex-1'>
 			<template x-for="(_, i) in Array(parseInt(fileInfo.size / displayPage))">
-				<div class="onepage w-full h-full" :id="'page' + i" x-intersect.full="setPage(i)">
+				<div class="onepage w-full h-full" :id="'page' + i" x-intersect.full="deferSetPage(i)">
 					<template x-for="(_, j) in Array(displayPage)">
 						<template x-data="{ p: i*displayPage+j }" x-if="p+oddNum >= 0">
 							<img class="flex-1" :src="getContentURL(p+oddNum)" loading="lazy" :loading="getImgLoading(i)" decoding="async" :style="'order: -' + j" />

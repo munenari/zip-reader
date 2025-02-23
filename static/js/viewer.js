@@ -52,7 +52,7 @@ window.addEventListener('alpine:init', () => {
 		pageText () {
 			const p = this.page * this.displayPage
 			const s = this.fileInfo.size
-			return `[${p+1}/${s}]`
+			return `[${p}/${s}]`
 		},
 		async init () {
 			this.filePath = location.hash.substring( 1 )
@@ -88,12 +88,14 @@ window.addEventListener('alpine:init', () => {
 		nextPage () {
 			this.setPage(this.page+1)
 		},
-		toggleFullscreen () {
+		async toggleFullscreen () {
+			const current = this.page
 			if ( !document.fullscreenElement ) {
-				document.body.requestFullscreen()
+				await document.body.requestFullscreen()
 			} else {
-				document.exitFullscreen()
+				await document.exitFullscreen()
 			}
+			this.page = current
 		},
 		setDisplayPage (v) {
 			this.displayPage = v
@@ -126,6 +128,10 @@ window.addEventListener('alpine:init', () => {
 				return 'eager'
 			}
 			return 'lazy'
+		},
+		deferSetPage(i) {
+			clearTimeout(this.setPageTimer)
+			this.setPageTimer = setTimeout(() => this.setPage(i), 200)
 		}
 	}))
 
