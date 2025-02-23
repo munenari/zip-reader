@@ -128,10 +128,6 @@ window.addEventListener('alpine:init', () => {
 				return 'eager'
 			}
 			return 'lazy'
-		},
-		deferSetPage(i) {
-			clearTimeout(this.setPageTimer)
-			this.setPageTimer = setTimeout(() => this.setPage(i), 200)
 		}
 	}))
 
