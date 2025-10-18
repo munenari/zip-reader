@@ -58,7 +58,8 @@ func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
 	height := i.Bounds().Dy()
 	log.Printf("image size: %dx%d\n", width, height)
 	if width < limitSize && height < limitSize {
-		return encoder.Encode(w, i)
+		// return encoder.Encode(w, i)
+		return jpeg.Encode(w, i, &jpegEncodeOpt)
 	}
 	newW, newH := getLimitSize(width, height, limitSize)
 	newImgData := image.NewRGBA(image.Rect(0, 0, newW, newH))
