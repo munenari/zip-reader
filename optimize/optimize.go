@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	_ "image/gif"
+	"image/jpeg"
 	_ "image/jpeg"
 	"image/png"
 	"io"
@@ -30,6 +31,7 @@ var (
 	_             = draw.BiLinear
 	defaultScaler = draw.CatmullRom
 	locker        = make(chan struct{}, parallelSize)
+	jpegEncodeOpt = jpeg.Options{Quality: 85}
 )
 
 func elapsed(name string) func() {
@@ -40,8 +42,8 @@ func elapsed(name string) func() {
 }
 
 func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
-	locker <- struct{}{}
-	defer func() { <-locker }()
+	// locker <- struct{}{}
+	// defer func() { <-locker }()
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("context done")
@@ -61,14 +63,12 @@ func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
 	newW, newH := getLimitSize(width, height, limitSize)
 	newImgData := image.NewRGBA(image.Rect(0, 0, newW, newH))
 	defaultScaler.Scale(newImgData, newImgData.Bounds(), i, i.Bounds(), draw.Over, nil)
-	return encoder.Encode(w, newImgData)
+	// return encoder.Encode(w, newImgData)
+	return jpeg.Encode(w, newImgData, &jpegEncodeOpt)
 }
 
 func getLimitSize(width, height, limit int) (newWidth, newHeight int) {
-	limitEdge := height
-	if height >= width {
-		limitEdge = width
-	}
+	limitEdge := min(height, width)
 	f := float64((limitEdge * limit))
 	newW := math.Round(f / float64(height))
 	newH := math.Round(f / float64(width))

@@ -1,7 +1,7 @@
 
-window.addEventListener('alpine:init', () => {
+window.addEventListener( 'alpine:init', () => {
 
-	async function getFileInfoData (h) {
+	async function getFileInfoData ( h ) {
 		if ( !h ) {
 			return
 		}
@@ -9,7 +9,7 @@ window.addEventListener('alpine:init', () => {
 		return await resp.json()
 	}
 
-	Alpine.data('clock', () => ({
+	Alpine.data( 'clock', () => ( {
 		now: new Date(),
 		_timer: null,
 		init () {
@@ -18,20 +18,20 @@ window.addEventListener('alpine:init', () => {
 			}, 10 * 1000 )
 		},
 		destroy () {
-			clearInterval(this._timer)
+			clearInterval( this._timer )
 		},
 		clockText () {
 			const dateH = ( '0' + this.now.getHours() ).slice( -2 )
 			const dateM = ( '0' + this.now.getMinutes() ).slice( -2 )
 			return `${ dateH }:${ dateM }`
 		}
-	}))
+	} ) )
 
 	let DEFAULT_DISPLAYSIZE = 1
-	if (window.innerWidth > 768) {
+	if ( window.innerWidth > 768 ) {
 		DEFAULT_DISPLAYSIZE = 2
 	}
-	Alpine.data('viewPage', () => ({
+	Alpine.data( 'viewPage', () => ( {
 		filePath: '',
 		fileInfo: {
 			name: '',
@@ -52,41 +52,41 @@ window.addEventListener('alpine:init', () => {
 		pageText () {
 			const p = this.page * this.displayPage
 			const s = this.fileInfo.size
-			return `[${p}/${s}]`
+			return `[${ p }/${ s }]`
 		},
 		async init () {
 			this.filePath = location.hash.substring( 1 )
-			this.fileInfo = await getFileInfoData(this.filePath)
-			this.$watch('page', (v) => {
-				const el = document.getElementById(`page${v}`)
-				if (!el) return
+			this.fileInfo = await getFileInfoData( this.filePath )
+			this.$watch( 'page', ( v ) => {
+				const el = document.getElementById( `page${ v }` )
+				if ( !el ) return
 				el.scrollIntoView( { behavior: 'auto' } )
 				localStorage.setItem( 'page:' + this.filePath, v )
-			})
+			} )
 			this.page = parseInt( localStorage.getItem( 'page:' + this.filePath ) ) || 0
-			console.info(this.$data.fileInfo)
+			console.info( this.$data.fileInfo )
 		},
 		getContentURL ( p ) {
 			const eagerSize = 2
-			if (Math.abs(p/this.displayPage-this.page) > eagerSize) {
+			if ( Math.abs( p / this.displayPage - this.page ) > eagerSize ) {
 				return ''
 			}
 			return `./c/${ this.filePath }?page=${ p }`
 		},
-		setPage (v) {
+		setPage ( v ) {
 			this.page = v
-			if (this.page > this.fileInfo.size / this.displayPage) {
+			if ( this.page > this.fileInfo.size / this.displayPage ) {
 				this.page = this.fileInfo.size / this.displayPage
 			}
-			if (this.page < 0) {
+			if ( this.page < 0 ) {
 				this.page = 0
 			}
 		},
 		prevPage () {
-			this.setPage(this.page-1)
+			this.setPage( this.page - 1 )
 		},
 		nextPage () {
-			this.setPage(this.page+1)
+			this.setPage( this.page + 1 )
 		},
 		async toggleFullscreen () {
 			const current = this.page
@@ -97,16 +97,16 @@ window.addEventListener('alpine:init', () => {
 			}
 			this.page = current
 		},
-		setDisplayPage (v) {
+		setDisplayPage ( v ) {
 			this.displayPage = v
 			localStorage.setItem( 'displaySize', v )
 		},
-		changeHash (v) {
-			if (!v) return
+		changeHash ( v ) {
+			if ( !v ) return
 			location.hash = v
 		},
 		oddPage () {
-			if (this.oddNum == 0) {
+			if ( this.oddNum == 0 ) {
 				this.oddNum = -1
 			} else {
 				this.oddNum = 0
@@ -114,21 +114,21 @@ window.addEventListener('alpine:init', () => {
 		},
 		onMousemove () {
 			this.mouseMoving = true
-			clearTimeout(this.mouseMoveTimer)
+			clearTimeout( this.mouseMoveTimer )
 			this.mouseMoveTimer = setTimeout( () => {
 				this.mouseMoving = false
 			}, 3000 )
 		},
-		onInputPage (evt) {
+		onInputPage ( evt ) {
 			this.page = -evt.target.value
 		},
-		getImgLoading (p) {
+		getImgLoading ( p ) {
 			const eagerSize = 2
-			if (Math.abs(p-this.page) <= eagerSize) {
+			if ( Math.abs( p - this.page ) <= eagerSize ) {
 				return 'eager'
 			}
 			return 'lazy'
 		}
-	}))
+	} ) )
 
-})
+} )

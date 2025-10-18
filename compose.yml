@@ -7,7 +7,6 @@ services:
       - "16280:80"
     restart: always
     volumes:
-      - ${GOPATH}/pkg:/go/pkg:delegated
       - ./:/code:delegated
       - nas1:/mnt/n1
       - nas2:/mnt/n2
