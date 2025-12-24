@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	limitSize    = 2000
-	parallelSize = 4
+	limitSize = 2000
 )
 
 var (
@@ -30,7 +29,6 @@ var (
 	_             = draw.ApproxBiLinear
 	_             = draw.BiLinear
 	defaultScaler = draw.CatmullRom
-	locker        = make(chan struct{}, parallelSize)
 	jpegEncodeOpt = jpeg.Options{Quality: 85}
 )
 
@@ -42,30 +40,29 @@ func elapsed(name string) func() {
 }
 
 func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
-	// locker <- struct{}{}
-	// defer func() { <-locker }()
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("context done")
-	default:
-	}
 	defer elapsed("image decode")()
 	i, _, err := image.Decode(r)
 	if err != nil {
 		return err
 	}
-	width := i.Bounds().Dx()
-	height := i.Bounds().Dy()
-	log.Printf("image size: %dx%d\n", width, height)
-	if width < limitSize && height < limitSize {
-		// return encoder.Encode(w, i)
-		return jpeg.Encode(w, i, &jpegEncodeOpt)
+	width, height := i.Bounds().Dx(), i.Bounds().Dy()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
 	}
-	newW, newH := getLimitSize(width, height, limitSize)
-	newImgData := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	defaultScaler.Scale(newImgData, newImgData.Bounds(), i, i.Bounds(), draw.Over, nil)
-	// return encoder.Encode(w, newImgData)
-	return jpeg.Encode(w, newImgData, &jpegEncodeOpt)
+	log.Printf("image size: %dx%d\n", width, height)
+	var newImg image.Image
+	if width < limitSize && height < limitSize {
+		newImg = i
+	} else {
+		newW, newH := getLimitSize(width, height, limitSize)
+		newImgData := image.NewRGBA(image.Rect(0, 0, newW, newH))
+		defaultScaler.Scale(newImgData, newImgData.Bounds(), i, i.Bounds(), draw.Over, nil)
+		newImg = newImgData
+	}
+	// return encoder.Encode(w, newImg)
+	return jpeg.Encode(w, newImg, &jpegEncodeOpt)
 }
 
 func getLimitSize(width, height, limit int) (newWidth, newHeight int) {

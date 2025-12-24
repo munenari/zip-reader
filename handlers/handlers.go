@@ -39,42 +39,30 @@ func handler(c echo.Context) error {
 	}
 	defer closer.Close()
 	defer rc.Close()
-	pr, pw := io.Pipe()
-	defer pr.Close()
-	go func() {
-		defer pw.Close()
-		if err := optimize.ResizeToMax(c.Request().Context(), rc, pw); err != nil {
-			c.Logger().Error(err)
-			pw.CloseWithError(err)
-		}
-	}()
-	c.Response().Header().Add("Cache-Control", "max-age=86400")
+	c.Response().Header().Set("Cache-Control", "max-age=86400")
 	c.Response().Header().Set("Content-Disposition", "inline")
-	return c.Stream(http.StatusOK, "application/octet-stream", pr)
+	c.Response().Header().Set("Content-Type", "application/octet-stream")
+	c.Response().WriteHeader(http.StatusOK)
+	return optimize.ResizeToMax(c.Request().Context(), rc, c.Response())
 }
 
 func recursizeReadPage(fp string, page int) (rc io.ReadCloser, closer io.Closer, err error) {
 	rc, closer, err = readPage(path.Join(readBaseDir, fp), page)
+	if err == nil {
+		return rc, closer, nil
+	}
+	dirEntries, err := os.ReadDir(path.Join(readBaseDir, fp))
 	if err != nil {
-		dirEntries, err := os.ReadDir(path.Join(readBaseDir, fp))
-		if err != nil {
-			return nil, nil, echo.NewHTTPError(http.StatusInternalServerError, "failed to read dir").SetInternal(err)
-		}
-		digSize := 4
-		if digSize > len(dirEntries) {
-			digSize = len(dirEntries)
-		}
-		for i := 0; i < digSize; i++ {
-			rc, closer, err = readPage(path.Join(readBaseDir, fp, dirEntries[i].Name()), page)
-			if err == nil {
-				return rc, closer, nil
-			}
-		}
-		if err != nil {
-			return nil, nil, echo.NewHTTPError(http.StatusBadRequest, "failed to read page").SetInternal(err)
+		return nil, nil, echo.NewHTTPError(http.StatusInternalServerError, "failed to read dir").SetInternal(err)
+	}
+	digSize := min(len(dirEntries), 4)
+	for i := range digSize {
+		rc, closer, err = readPage(path.Join(readBaseDir, fp, dirEntries[i].Name()), page)
+		if err == nil {
+			return rc, closer, nil
 		}
 	}
-	return
+	return nil, nil, echo.NewHTTPError(http.StatusBadRequest, "failed to read page").SetInternal(err)
 }
 
 func listHandler(c echo.Context) error {
