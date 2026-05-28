@@ -7,7 +7,6 @@ import (
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/jpeg"
-	"image/png"
 	"io"
 	"log"
 	"math"
@@ -21,15 +20,11 @@ const (
 )
 
 var (
-	encoder = &png.Encoder{
-		CompressionLevel: png.BestSpeed,
-		BufferPool:       NewBufferPool(),
-	}
 	_             = draw.NearestNeighbor
 	_             = draw.ApproxBiLinear
 	_             = draw.BiLinear
 	defaultScaler = draw.CatmullRom
-	jpegEncodeOpt = jpeg.Options{Quality: 85}
+	jpegEncodeOpt = jpeg.Options{Quality: 90}
 )
 
 func elapsed(name string) func() {
@@ -39,18 +34,28 @@ func elapsed(name string) func() {
 	}
 }
 
+type customReader struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (x customReader) Read(p []byte) (int, error) {
+	select {
+	case <-x.ctx.Done():
+		return 0, x.ctx.Err()
+	default:
+		return x.r.Read(p)
+	}
+}
+
 func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
 	defer elapsed("image decode")()
-	i, _, err := image.Decode(r)
+	rr := customReader{ctx: ctx, r: r}
+	i, _, err := image.Decode(rr)
 	if err != nil {
 		return err
 	}
 	width, height := i.Bounds().Dx(), i.Bounds().Dy()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
 	log.Printf("image size: %dx%d\n", width, height)
 	var newImg image.Image
 	if width < limitSize && height < limitSize {
@@ -61,7 +66,6 @@ func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
 		defaultScaler.Scale(newImgData, newImgData.Bounds(), i, i.Bounds(), draw.Over, nil)
 		newImg = newImgData
 	}
-	// return encoder.Encode(w, newImg)
 	return jpeg.Encode(w, newImg, &jpegEncodeOpt)
 }
 

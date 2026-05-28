@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"io/fs"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/munenari/read-zip/optimize"
+	"github.com/munenari/read-zip/util"
 )
 
 var (
@@ -21,7 +23,7 @@ var (
 
 func handler(c echo.Context) error {
 	filepath := c.Param("filepath")
-	fp, err := ungzipPath(filepath)
+	fp, err := util.UnGzipPath(filepath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "filepath param was invalid").SetInternal(err)
 	}
@@ -33,12 +35,15 @@ func handler(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "page was invalid").SetInternal(err)
 	}
-	rc, closer, err := recursizeReadPage(fp, page)
+	rc, closer, err := recursizeReadPage(c.Request().Context(), fp, page)
 	if err != nil {
 		return err
 	}
 	defer closer.Close()
 	defer rc.Close()
+	if err := c.Request().Context().Err(); err != nil {
+		return err
+	}
 	c.Response().Header().Set("Cache-Control", "max-age=86400")
 	c.Response().Header().Set("Content-Disposition", "inline")
 	c.Response().Header().Set("Content-Type", "application/octet-stream")
@@ -46,10 +51,17 @@ func handler(c echo.Context) error {
 	return optimize.ResizeToMax(c.Request().Context(), rc, c.Response())
 }
 
-func recursizeReadPage(fp string, page int) (rc io.ReadCloser, closer io.Closer, err error) {
-	rc, closer, err = readPage(path.Join(readBaseDir, fp), page)
+func recursizeReadPage(ctx context.Context, fp string, page int) (rc io.ReadCloser, closer io.Closer, err error) {
+	zr, err := util.NewZipReaderWithOpen(path.Join(readBaseDir, fp))
 	if err == nil {
-		return rc, closer, nil
+		rc, err = zr.At(page)
+		if err == nil {
+			return rc, zr, nil
+		}
+		zr.Close()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
 	}
 	dirEntries, err := os.ReadDir(path.Join(readBaseDir, fp))
 	if err != nil {
@@ -57,16 +69,27 @@ func recursizeReadPage(fp string, page int) (rc io.ReadCloser, closer io.Closer,
 	}
 	digSize := min(len(dirEntries), 4)
 	for i := range digSize {
-		rc, closer, err = readPage(path.Join(readBaseDir, fp, dirEntries[i].Name()), page)
-		if err == nil {
-			return rc, closer, nil
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
 		}
+		zr, err = util.NewZipReaderWithOpen(path.Join(readBaseDir, fp, dirEntries[i].Name()))
+		if err != nil {
+			continue
+		}
+		rc, err = zr.At(page)
+		if err == nil {
+			return rc, zr, nil
+		}
+		zr.Close()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
 	}
 	return nil, nil, echo.NewHTTPError(http.StatusBadRequest, "failed to read page").SetInternal(err)
 }
 
 func listHandler(c echo.Context) error {
-	dirname, err := ungzipPath(c.Param("dirname"))
+	dirname, err := util.UnGzipPath(c.Param("dirname"))
 	if err != nil {
 		c.Logger().Error(err)
 	}
@@ -99,14 +122,15 @@ func listHandler(c echo.Context) error {
 
 func infoHandler(c echo.Context) error {
 	filepath := c.Param("filepath")
-	fp, err := ungzipPath(filepath)
+	fp, err := util.UnGzipPath(filepath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "filepath param was invalid").SetInternal(err)
 	}
-	l, err := length(path.Join(readBaseDir, fp))
+	zr, err := util.NewZipReaderWithOpen(path.Join(readBaseDir, fp))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "page was invalid").SetInternal(err)
 	}
+	defer zr.Close()
 	dirEntries, err := os.ReadDir(path.Join(readBaseDir, path.Dir(fp)))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "path was invalid").SetInternal(err)
@@ -114,16 +138,12 @@ func infoHandler(c echo.Context) error {
 	dirEntries = slices.DeleteFunc(dirEntries, func(v fs.DirEntry) bool {
 		return strings.HasPrefix(v.Name(), ".")
 	})
-	currentIndex := 0
-	for i, de := range dirEntries {
-		if strings.Index(de.Name(), ".") == 0 {
-			continue
+	currentIndex := slices.IndexFunc(dirEntries, func(v os.DirEntry) bool {
+		if strings.Index(v.Name(), ".") == 0 {
+			return false
 		}
-		if path.Join(path.Dir(fp), de.Name()) == fp {
-			currentIndex = i
-			break
-		}
-	}
+		return path.Join(path.Dir(fp), v.Name()) == fp
+	})
 	prevIndex := currentIndex - 1
 	if prevIndex < 0 {
 		prevIndex = len(dirEntries) - 1
@@ -132,21 +152,21 @@ func infoHandler(c echo.Context) error {
 	if nextIndex > len(dirEntries)-1 {
 		nextIndex = 0
 	}
-	prevHashedName, err := gzipPath(path.Join(path.Dir(fp), dirEntries[prevIndex].Name()))
+	prevHashedName, err := util.GzipPath(path.Join(path.Dir(fp), dirEntries[prevIndex].Name()))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to encode filename").SetInternal(err)
 	}
-	nextHashedName, err := gzipPath(path.Join(path.Dir(fp), dirEntries[nextIndex].Name()))
+	nextHashedName, err := util.GzipPath(path.Join(path.Dir(fp), dirEntries[nextIndex].Name()))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to encode filename").SetInternal(err)
 	}
-	parentDir, err := gzipPath(path.Dir(fp))
+	parentDir, err := util.GzipPath(path.Dir(fp))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to encode filename").SetInternal(err)
 	}
 	v := map[string]interface{}{
 		"name":               fp,
-		"size":               l,
+		"size":               zr.Len(),
 		"prev_hashed_name":   prevHashedName,
 		"next_hashed_name":   nextHashedName,
 		"parent_hashed_name": parentDir,

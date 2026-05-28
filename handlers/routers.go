@@ -13,18 +13,18 @@ func Routes(htmls embed.FS, baseDir string) (*echo.Echo, error) {
 	readBaseDir = baseDir
 
 	e := echo.New()
-	e.Use(middleware.Logger(), middleware.Recover(), middleware.Gzip())
+	e.Use(middleware.Logger(), middleware.Recover(), middleware.RemoveTrailingSlash())
 	e.HideBanner = true
 	public, err := fs.Sub(htmls, "static")
 	if err != nil {
 		return nil, err
 	}
+	gzipMiddleware := middleware.Gzip()
 	// _ = public
-	e.GET("/*", echo.WrapHandler(http.FileServer(http.FS(public))))
-	e.GET("/d", listHandler)
-	e.GET("/d/", listHandler)
-	e.GET("/d/:dirname", listHandler)
+	e.GET("/*", echo.WrapHandler(http.FileServer(http.FS(public))), gzipMiddleware)
+	e.GET("/d", listHandler, gzipMiddleware)
+	e.GET("/d/:dirname", listHandler, gzipMiddleware)
 	e.GET("/c/:filepath", handler)
-	e.GET("/i/:filepath", infoHandler)
+	e.GET("/i/:filepath", infoHandler, gzipMiddleware)
 	return e, nil
 }
