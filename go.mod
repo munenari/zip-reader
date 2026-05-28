@@ -1,8 +1,9 @@
 module github.com/munenari/read-zip
 
-go 1.25.2
+go 1.26.0
 
 require (
+	github.com/btcsuite/btcutil v1.0.2
 	github.com/labstack/echo/v4 v4.13.4
 	golang.org/x/image v0.32.0
 )

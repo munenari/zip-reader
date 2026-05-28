@@ -78,6 +78,7 @@ window.addEventListener( 'alpine:init', () => {
 			if ( this.page > this.fileInfo.size / this.displayPage ) {
 				this.page = this.fileInfo.size / this.displayPage
 			}
+			this.page = Math.floor( this.page )
 			if ( this.page < 0 ) {
 				this.page = 0
 			}

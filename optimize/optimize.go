@@ -7,7 +7,6 @@ import (
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/jpeg"
-	"image/png"
 	"io"
 	"log"
 	"math"
@@ -17,21 +16,15 @@ import (
 )
 
 const (
-	limitSize    = 2000
-	parallelSize = 4
+	limitSize = 2000
 )
 
 var (
-	encoder = &png.Encoder{
-		CompressionLevel: png.BestSpeed,
-		BufferPool:       NewBufferPool(),
-	}
 	_             = draw.NearestNeighbor
 	_             = draw.ApproxBiLinear
 	_             = draw.BiLinear
 	defaultScaler = draw.CatmullRom
-	locker        = make(chan struct{}, parallelSize)
-	jpegEncodeOpt = jpeg.Options{Quality: 85}
+	jpegEncodeOpt = jpeg.Options{Quality: 90}
 )
 
 func elapsed(name string) func() {
@@ -41,31 +34,39 @@ func elapsed(name string) func() {
 	}
 }
 
-func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
-	// locker <- struct{}{}
-	// defer func() { <-locker }()
+type customReader struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (x customReader) Read(p []byte) (int, error) {
 	select {
-	case <-ctx.Done():
-		return fmt.Errorf("context done")
+	case <-x.ctx.Done():
+		return 0, x.ctx.Err()
 	default:
+		return x.r.Read(p)
 	}
+}
+
+func ResizeToMax(ctx context.Context, r io.Reader, w io.Writer) error {
 	defer elapsed("image decode")()
-	i, _, err := image.Decode(r)
+	rr := customReader{ctx: ctx, r: r}
+	i, _, err := image.Decode(rr)
 	if err != nil {
 		return err
 	}
-	width := i.Bounds().Dx()
-	height := i.Bounds().Dy()
+	width, height := i.Bounds().Dx(), i.Bounds().Dy()
 	log.Printf("image size: %dx%d\n", width, height)
+	var newImg image.Image
 	if width < limitSize && height < limitSize {
-		// return encoder.Encode(w, i)
-		return jpeg.Encode(w, i, &jpegEncodeOpt)
+		newImg = i
+	} else {
+		newW, newH := getLimitSize(width, height, limitSize)
+		newImgData := image.NewRGBA(image.Rect(0, 0, newW, newH))
+		defaultScaler.Scale(newImgData, newImgData.Bounds(), i, i.Bounds(), draw.Over, nil)
+		newImg = newImgData
 	}
-	newW, newH := getLimitSize(width, height, limitSize)
-	newImgData := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	defaultScaler.Scale(newImgData, newImgData.Bounds(), i, i.Bounds(), draw.Over, nil)
-	// return encoder.Encode(w, newImgData)
-	return jpeg.Encode(w, newImgData, &jpegEncodeOpt)
+	return jpeg.Encode(w, newImg, &jpegEncodeOpt)
 }
 
 func getLimitSize(width, height, limit int) (newWidth, newHeight int) {
