@@ -1,3 +1,7 @@
+import { createMangaViewer } from 'https://cdn.jsdelivr.net/npm/@yui540/comimi@0.15.0/+esm'
+import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.15.8/+esm'
+
+window.Alpine = Alpine
 
 window.addEventListener( 'alpine:init', () => {
 
@@ -57,14 +61,23 @@ window.addEventListener( 'alpine:init', () => {
 		async init () {
 			this.filePath = location.hash.substring( 1 )
 			this.fileInfo = await getFileInfoData( this.filePath )
-			this.$watch( 'page', ( v ) => {
-				const el = document.getElementById( `page${ v }` )
-				if ( !el ) return
-				el.scrollIntoView( { behavior: 'auto' } )
-				localStorage.setItem( 'page:' + this.filePath, v )
-			} )
-			this.page = parseInt( localStorage.getItem( 'page:' + this.filePath ) ) || 0
 			console.info( this.$data.fileInfo )
+			const pages = []
+			for ( let i = 0; i < this.fileInfo.size; i++ ) {
+				pages.push( { id: `p${ i }`, type: 'image', src: `./c/${ this.filePath }?page=${ i }` } )
+			}
+			createMangaViewer( document.querySelector( '#mainviewer' ), {
+				manga: {
+					id: this.fileInfo.name,
+					title: this.fileInfo.name,
+					pages,
+				},
+				settings: {
+					pageTurnMode: 'spread',
+					layoutMode: 'browserFullscreen'
+				},
+				lockLayoutMode: true
+			} )
 		},
 		getContentURL ( p ) {
 			const eagerSize = 2
@@ -133,3 +146,4 @@ window.addEventListener( 'alpine:init', () => {
 	} ) )
 
 } )
+Alpine.start()
